@@ -350,6 +350,10 @@ public class SourceConverter
 				{
 					generateVariable(binding, declarator, exprs.get(i));
 				}
+				else if (binding instanceof ITypedef)
+				{
+				    // nothing to do but silence the error below
+				}
 				else
 				{
 					MyLogger.logImportant("Unsupported declarator: " + declarator.getClass().getCanonicalName() + ":" + binding.getClass().getName());
@@ -547,6 +551,10 @@ public class SourceConverter
 		else if (binding instanceof IField)
 		{
 			return (((IField) binding).getType());
+		}
+		else if (binding instanceof ITypedef)
+		{
+		    return (((ITypedef) binding).getType());
 		}
 		else if (binding instanceof ICompositeType)
 		{
