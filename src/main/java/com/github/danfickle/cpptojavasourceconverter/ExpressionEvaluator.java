@@ -862,9 +862,18 @@ class ExpressionEvaluator
 			params = ((ICPPMethod) binding).getParameters();
 		}
 	
-		for (int i = 0; i < params.length; i++)
+		int paramsLength = params.length;
+		if (paramsLength == 1 &&
+		        params[0].getType() instanceof IBasicType &&
+		        ((IBasicType)params[0].getType()).getKind() == IBasicType.Kind.eVoid) {
+		    // function "f(void)" actually has 0 args, not 1
+		    paramsLength = 0;
+		}
+		// functions with default args can have fewer arguments passed
+		IASTInitializerClause[] exprArguments = expr.getArguments();
+		for (int i = 0; i < paramsLength && i < exprArguments.length; i++)
 		{
-			IASTExpression argExpr = (IASTExpression) expr.getArguments()[i];
+			IASTExpression argExpr = (IASTExpression) exprArguments[i];
 			args.add(wrapIfNeeded(argExpr, params[i].getType()));
 		}
 	}
