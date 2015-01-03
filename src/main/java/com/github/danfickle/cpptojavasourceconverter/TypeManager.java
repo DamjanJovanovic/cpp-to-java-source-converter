@@ -328,22 +328,20 @@ class TypeManager
 		else if (type instanceof ICPPReferenceType)
 		{
 			ICPPReferenceType ref = (ICPPReferenceType) type;
-
-			if ((ref.getType() instanceof IQualifierType) || 
-				ref.getType() instanceof ICPPClassType /* &&
-				 ((IQualifierType) ref.getType()).isConst()) */)
-			{
-				return cppToJavaType(ref.getType(), tp);
+			IType underlyingType = ref.getType();
+			while (underlyingType instanceof ITypedef) {
+			    underlyingType = ((ITypedef)underlyingType).getType();
 			}
-			else if (ref.getType() instanceof IBasicType || 
-					(ref.getType() instanceof ITypedef && 
-					((ITypedef) ref.getType()).getType() instanceof IBasicType))
+
+			if ((underlyingType instanceof IQualifierType) || 
+				underlyingType instanceof ICPPClassType /* &&
+				 ((IQualifierType) underlyingType).isConst()) */)
 			{
-				IBasicType basic;
-				if (ref.getType() instanceof ITypedef)
-					basic = ((IBasicType)((ITypedef) ref.getType()).getType());
-				else
-					basic = (IBasicType) ref.getType();
+				return cppToJavaType(underlyingType, tp);
+			}
+			else if (underlyingType instanceof IBasicType)
+			{
+				IBasicType basic = (IBasicType) underlyingType;
 
 				String basicStr = evaluateSimpleTypeBoxed(basic.getKind(), basic.isShort(), basic.isLongLong(), basic.isUnsigned());
 				String simpleType = "I" + basicStr;
