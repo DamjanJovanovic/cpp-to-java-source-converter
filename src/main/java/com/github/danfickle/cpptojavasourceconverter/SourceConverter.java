@@ -647,100 +647,105 @@ public class SourceConverter
 			
 			CompositeInfo info = new CompositeInfo(tyd);
 			currentInfoStack.addFirst(info);
-
-			if (compositeTypeSpecifier.getKey() == IASTCompositeTypeSpecifier.k_union)
-				tyd.isUnion = true;
-			
-			info.declSpecifier = declSpecifier;
-			findSpecialMethods(declSpecifier, info);
-		
-			// TODOtyd.typeParameters().addAll(templateParamsQueue);			
-			// TODOtemplateParamsQueue.clear();
-			
-			if (compositeTypeSpecifier instanceof ICPPASTCompositeTypeSpecifier)
+			try
 			{
-				ICPPASTCompositeTypeSpecifier cppCompositeTypeSpecifier = (ICPPASTCompositeTypeSpecifier)compositeTypeSpecifier;
-
-				if (cppCompositeTypeSpecifier.getBaseSpecifiers() != null && cppCompositeTypeSpecifier.getBaseSpecifiers().length != 0)
-				{
-					info.hasSuper = true;
-					info.superClass = tyd.superclass = TypeManager.cppNameToJavaName(cppCompositeTypeSpecifier.getBaseSpecifiers()[0].getName().resolveBinding().getName(), NameType.CAPITALIZED);
-				}
-				
-				for (int i = 0; i < cppCompositeTypeSpecifier.getBaseSpecifiers().length; i++)
-					tyd.additionalSupers.add(TypeManager.getSimpleName(cppCompositeTypeSpecifier.getBaseSpecifiers()[i].getName()));
+    			if (compositeTypeSpecifier.getKey() == IASTCompositeTypeSpecifier.k_union)
+    				tyd.isUnion = true;
+    			
+    			info.declSpecifier = declSpecifier;
+    			findSpecialMethods(declSpecifier, info);
+    		
+    			// TODOtyd.typeParameters().addAll(templateParamsQueue);			
+    			// TODOtemplateParamsQueue.clear();
+    			
+    			if (compositeTypeSpecifier instanceof ICPPASTCompositeTypeSpecifier)
+    			{
+    				ICPPASTCompositeTypeSpecifier cppCompositeTypeSpecifier = (ICPPASTCompositeTypeSpecifier)compositeTypeSpecifier;
+    
+    				if (cppCompositeTypeSpecifier.getBaseSpecifiers() != null && cppCompositeTypeSpecifier.getBaseSpecifiers().length != 0)
+    				{
+    					info.hasSuper = true;
+    					info.superClass = tyd.superclass = TypeManager.cppNameToJavaName(cppCompositeTypeSpecifier.getBaseSpecifiers()[0].getName().resolveBinding().getName(), NameType.CAPITALIZED);
+    				}
+    				
+    				for (int i = 0; i < cppCompositeTypeSpecifier.getBaseSpecifiers().length; i++)
+    					tyd.additionalSupers.add(TypeManager.getSimpleName(cppCompositeTypeSpecifier.getBaseSpecifiers()[i].getName()));
+    			}
+    
+    			for (IASTDeclaration decl : compositeTypeSpecifier.getMembers())
+    			{
+    				evalDeclaration(decl);
+    			}
+    			
+    			if (!info.hasCtor)
+    			{
+    				// Generate a constructor.
+    				CppCtor ctor = ctx.declModels.new CppCtor();
+    				ctor.type = tyd.name;
+    				
+    				MCompoundStmt blk = ctx.stmtModels.new MCompoundStmt();
+    				ctor.body = blk;
+    				
+    				List<FieldInfo> fields = collectFieldsForClass(declSpecifier);
+    				ctx.specialGenerator.generateCtorStatements(fields, ctor.body);
+    
+    				if (info.hasSuper)
+    				{
+    					MSuperStmt sup = ctx.stmtModels.new MSuperStmt();
+    					blk.statements.add(0, sup);
+    				}
+    				
+    				tyd.declarations.add(ctor);
+    			}
+    			
+    			if (!info.hasDtor)
+    			{
+    				// Generate desctructor.
+    				CppDtor dtor = ctx.declModels.new CppDtor();
+    				
+    				MCompoundStmt blk = ctx.stmtModels.new MCompoundStmt();
+    				dtor.body = blk;
+    				
+    				List<FieldInfo> fields = collectFieldsForClass(declSpecifier);
+    				ctx.specialGenerator.generateDtorStatements(fields, dtor.body, info.hasSuper);
+    				tyd.declarations.add(dtor);
+    			}
+    			
+    			if (!info.hasAssign)
+    			{
+    				CppAssign ass = ctx.specialGenerator.generateAssignMethod(info, tyd, declSpecifier);
+    				tyd.declarations.add(ass);
+    			}
+    			
+    			if (!info.hasCopy)
+    			{
+    				CppFunction meth = ctx.specialGenerator.generateCopyCtor(info, tyd, declSpecifier);
+    				tyd.declarations.add(meth);
+    			}
+    			
+    			// Add a copy method that calls the copy constructor.
+    			CppFunction meth = ctx.declModels.new CppFunction();
+    			meth.retType = tyd.name;
+    			meth.name = "copy";
+    			meth.isOverride = true;
+    
+    			MClassInstanceCreation create = new MClassInstanceCreation();
+    			create.name = ModelCreation.createLiteral(tyd.name);
+    			create.args.add(ModelCreation.createLiteral("this"));
+    			
+    			MReturnStmt stmt = ctx.stmtModels.new MReturnStmt();
+    			stmt.expr = create;
+    			
+    			MCompoundStmt blk = ctx.stmtModels.new MCompoundStmt();
+    			blk.statements.add(stmt);
+    			meth.body = blk;
+    
+    			tyd.declarations.add(meth);
 			}
-
-			for (IASTDeclaration decl : compositeTypeSpecifier.getMembers())
+			finally
 			{
-				evalDeclaration(decl);
+			    currentInfoStack.removeFirst();
 			}
-			
-			if (!info.hasCtor)
-			{
-				// Generate a constructor.
-				CppCtor ctor = ctx.declModels.new CppCtor();
-				ctor.type = tyd.name;
-				
-				MCompoundStmt blk = ctx.stmtModels.new MCompoundStmt();
-				ctor.body = blk;
-				
-				List<FieldInfo> fields = collectFieldsForClass(declSpecifier);
-				ctx.specialGenerator.generateCtorStatements(fields, ctor.body);
-
-				if (info.hasSuper)
-				{
-					MSuperStmt sup = ctx.stmtModels.new MSuperStmt();
-					blk.statements.add(0, sup);
-				}
-				
-				tyd.declarations.add(ctor);
-			}
-			
-			if (!info.hasDtor)
-			{
-				// Generate desctructor.
-				CppDtor dtor = ctx.declModels.new CppDtor();
-				
-				MCompoundStmt blk = ctx.stmtModels.new MCompoundStmt();
-				dtor.body = blk;
-				
-				List<FieldInfo> fields = collectFieldsForClass(declSpecifier);
-				ctx.specialGenerator.generateDtorStatements(fields, dtor.body, info.hasSuper);
-				tyd.declarations.add(dtor);
-			}
-			
-			if (!info.hasAssign)
-			{
-				CppAssign ass = ctx.specialGenerator.generateAssignMethod(info, tyd, declSpecifier);
-				tyd.declarations.add(ass);
-			}
-			
-			if (!info.hasCopy)
-			{
-				CppFunction meth = ctx.specialGenerator.generateCopyCtor(info, tyd, declSpecifier);
-				tyd.declarations.add(meth);
-			}
-			
-			// Add a copy method that calls the copy constructor.
-			CppFunction meth = ctx.declModels.new CppFunction();
-			meth.retType = tyd.name;
-			meth.name = "copy";
-			meth.isOverride = true;
-
-			MClassInstanceCreation create = new MClassInstanceCreation();
-			create.name = ModelCreation.createLiteral(tyd.name);
-			create.args.add(ModelCreation.createLiteral("this"));
-			
-			MReturnStmt stmt = ctx.stmtModels.new MReturnStmt();
-			stmt.expr = create;
-			
-			MCompoundStmt blk = ctx.stmtModels.new MCompoundStmt();
-			blk.statements.add(stmt);
-			meth.body = blk;
-
-			tyd.declarations.add(meth);	
-			currentInfoStack.removeFirst();
 		}
 		else if (declSpecifier instanceof IASTElaboratedTypeSpecifier)
 		{
