@@ -168,7 +168,7 @@ public class StmtModels
 		@Override
 		public String toString() 
 		{
-			return String.format("%s%s\n", tabOut(), this.simple);
+			return String.format("%s%s;\n", tabOut(), this.simple);
 		}
 	}
 
