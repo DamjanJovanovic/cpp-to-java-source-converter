@@ -68,12 +68,17 @@ public class StmtModels
 			
 			int temp = ctx.tabLevel;
 			ctx.tabLevel = 0;
-			  start += String.format("for (%s %s; %s)\n", tabOut(), 
-					  stripNl(this.initializer.toString()), 
-					  this.condition == null ? "" : this.condition,
-					  this.updater == null ? "" : this.updater);
-
-			ctx.tabLevel = temp;
+			try
+			{
+    			start += String.format("for (%s %s; %s)\n", tabOut(), 
+    					  stripNl(this.initializer.toString()), 
+    					  this.condition == null ? "" : this.condition,
+    					  this.updater == null ? "" : this.updater);
+			}
+			finally
+			{
+			    ctx.tabLevel = temp;
+			}
 			
 			start += String.format("%s%s\n", tabOut(this.body), this.body);
 
@@ -145,15 +150,20 @@ public class StmtModels
 			sb.append(String.format("%s{\n", tabOut(0)));
 
 			ctx.tabLevel++;
-			for (MStmt stmt : this.statements)
+			try
 			{
-				sb.append(String.format("%s\n", stmt));
+    			for (MStmt stmt : this.statements)
+    			{
+    				sb.append(String.format("%s\n", stmt));
+    			}
+    			
+    			if (this.cleanup != null)
+    				sb.append(String.format("%s\n", this.cleanup));
 			}
-			
-			if (this.cleanup != null)
-				sb.append(String.format("%s\n", this.cleanup));
-
-			ctx.tabLevel--;
+			finally
+			{
+			    ctx.tabLevel--;
+			}
 			
 			sb.append(String.format("%s}\n", tabOut(0)));
 

@@ -165,8 +165,14 @@ public class DeclarationModels
 
 			str += "\n" + tabOut() + '{';
 			ctx.tabLevel++;
-			  str += join(this.declarations, "");
-			ctx.tabLevel--;
+			try
+			{
+			    str += join(this.declarations, "");
+			}
+			finally
+			{
+			    ctx.tabLevel--;
+			}
 			str += "\n" + tabOut() + '}';
 			
 			return str;
